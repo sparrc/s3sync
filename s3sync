@@ -1,0 +1,46 @@
+#!/bin/bash
+set -eou pipefail
+
+# README:
+#   1. setup s3 access and create a bucket
+#   2. configure directory that you want to sync
+#   3. mkdir $HOME/.s3sync
+#   4. echo '{"syncdir":"/Users/sparrc/s3", "bucket":"mybucket"}' > $HOME/.s3sync/config.json
+#   5. cd $HOME/.s3sync
+#   6. nohup ./s3sync > ./sync.log &
+
+SYNC_DIR=$(cat "$HOME/.s3sync/config.json" | jq -r .syncdir)
+BUCKET=$(cat "$HOME/.s3sync/config.json" | jq -r .bucket)
+
+if [ ! -f "$HOME/.s3sync/ts" ]; then
+    echo 0 > "$HOME/.s3sync/ts"
+fi
+
+if ! aws s3 ls "s3://$BUCKET/ts"; then
+    aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts"
+fi
+
+while true
+do
+    # get latest timestamp from remote:
+    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote"
+    TS_REMOTE=$(cat "$HOME/.s3sync/ts_remote")
+    TS_LOCAL=$(cat "$HOME/.s3sync/ts")
+    if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
+        echo "Remote stuff is newer, get it."
+        cp "$HOME/.s3sync/ts_remote" "$HOME/.s3sync/ts"
+        aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete
+    else
+        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class INTELLIGENT_TIERING | tee -a "$HOME/.s3sync/sync.log")
+        if [[ "$diff" != "" ]]; then
+            # we made a change, update timestamps
+            echo "Sync uploaded some changes from local, update timestamps"
+            TS_NEW=$(date --utc "+%s")
+            echo "$TS_NEW" > "$HOME/.s3sync/ts"
+            aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts"
+            cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
+        fi
+    fi
+    sleep 60
+done
+
