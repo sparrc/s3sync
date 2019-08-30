@@ -1,14 +1,6 @@
 #!/bin/bash
 set -eou pipefail
 
-# README:
-#   1. setup s3 access and create a bucket
-#   2. configure directory that you want to sync
-#   3. mkdir $HOME/.s3sync
-#   4. echo '{"syncdir":"/Users/sparrc/s3", "bucket":"mybucket"}' > $HOME/.s3sync/config.json
-#   5. cd $HOME/.s3sync
-#   6. nohup ./s3sync > ./sync.log &
-
 SYNC_DIR=$(cat "$HOME/.s3sync/config.json" | jq -r .syncdir)
 BUCKET=$(cat "$HOME/.s3sync/config.json" | jq -r .bucket)
 
