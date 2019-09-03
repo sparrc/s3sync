@@ -10,8 +10,8 @@
 
 1. Setup AWS_ environment variables
 1. `eval "echo \"$(cat com.s3sync.plist)\"" | sudo tee /Library/LaunchAgents/com.s3sync.plist`
-1. `sudo chmod 755 /Library/LaunchDaemons/com.s3sync.plist`
-1. `sudo chown root:wheel /Library/LaunchDaemons/com.s3sync.plist`
-1. `sudo launchctl load -w /Library/LaunchDaemons/com.s3sync.plist`
+1. `sudo chmod 755 /Library/LaunchAgents/com.s3sync.plist`
+1. `sudo chown root:wheel /Library/LaunchAgents/com.s3sync.plist`
+1. `sudo launchctl load -w /Library/LaunchAgents/com.s3sync.plist`
 1. check status with `sudo launchctl list | grep s3sync`
 
