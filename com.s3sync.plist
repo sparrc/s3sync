@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC -//Apple Computer//DTD PLIST 1.0//EN http://www.apple.com/DTDs/PropertyList-1.0.dtd >
+<plist version="1.0">
+<dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/$USER</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:</string>
+        <key>AWS_DEFAULT_REGION</key>
+        <string>$AWS_DEFAULT_REGION</string>
+        <key>AWS_ACCESS_KEY_ID</key>
+        <string>$AWS_ACCESS_KEY_ID</string>
+        <key>AWS_SECRET_ACCESS_KEY</key>
+        <string>$AWS_SECRET_ACCESS_KEY</string>
+    </dict>
+    <key>Label</key>
+        <string>com.s3sync</string>
+    <key>WorkingDirectory</key>
+        <string>/Users/$USER/.s3sync</string>
+    <key>ProgramArguments</key>
+        <array>
+            <string>./s3sync</string>
+        </array>
+    <key>RunAtLoad</key>
+        <true/>
+    <key>UserName</key>
+        <string>$USER</string>
+    <key>StandardOutPath</key>
+        <string>/Users/$USER/.s3sync/sync.log</string>
+    <key>StandardErrorPath</key>
+        <string>/Users/$USER/.s3sync/sync.log</string>
+</dict>
+</plist>

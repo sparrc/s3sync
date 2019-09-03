@@ -14,20 +14,21 @@ fi
 
 while true
 do
-    NOW=$(date --utc "+%s")
+    NOW=$(date -u "+%s")
     # get latest timestamp from remote:
-    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote" | tee -a "$HOME/.s3sync/sync.log"
+    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote"
     TS_REMOTE=$(cat "$HOME/.s3sync/ts_remote")
     TS_LOCAL=$(cat "$HOME/.s3sync/ts")
     if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
-        echo "Remote stuff is newer, get it." | tee -a "$HOME/.s3sync/sync.log"
+        echo "Remote stuff is newer, get it."
         cp "$HOME/.s3sync/ts_remote" "$HOME/.s3sync/ts"
-        aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete | tee -a "$HOME/.s3sync/sync.log"
+        aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete
     else
-        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class INTELLIGENT_TIERING | tee -a "$HOME/.s3sync/sync.log")
+        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class INTELLIGENT_TIERING)
         if [[ "$diff" != "" ]]; then
+            echo "$diff"
             # we made a change, update timestamps
-            echo "Sync uploaded some changes from local, update timestamps" | tee -a "$HOME/.s3sync/sync.log"
+            echo "Sync uploaded some changes from local, update timestamps"
             echo "$NOW" > "$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts"
             cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
