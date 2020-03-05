@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SYNC_DIR=$(cat "$HOME/.s3sync/config.json" | jq -r .syncdir)
-BUCKET=$(cat "$HOME/.s3sync/config.json" | jq -r .bucket)
+SYNC_DIR=$(jq -r .syncdir < "$HOME/.s3sync/config.json")
+BUCKET=$(jq -r .bucket < "$HOME/.s3sync/config.json")
 
 if [ ! -f "$HOME/.s3sync/ts" ]; then
     echo 0 > "$HOME/.s3sync/ts"
@@ -16,7 +16,7 @@ acquireLock() {
     do
         exists=$(aws s3 ls "s3://$BUCKET/lock")
         if [ -z "$exists" ]; then
-            aws s3 cp "$HOME/.s3sync/lock" s3://$BUCKET/lock --quiet
+            aws s3 cp "$HOME/.s3sync/lock" "s3://$BUCKET/lock" --quiet
             echo "$(date -u +%FT%TZ) Acquired lock."
             return 0
         else
@@ -49,7 +49,7 @@ do
             echo "$diff"
             # we made a change, update timestamps
             echo "$(date -u +%FT%TZ) Local directory changes uploaded, updating remote timestamp."
-            echo "$NOW" > "$HOME/.s3sync/ts"
+            printf "$NOW" > "$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
             cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
         fi
