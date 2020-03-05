@@ -1,5 +1,4 @@
 #!/bin/bash
-set -eou pipefail
 
 SYNC_DIR=$(cat "$HOME/.s3sync/config.json" | jq -r .syncdir)
 BUCKET=$(cat "$HOME/.s3sync/config.json" | jq -r .bucket)
@@ -12,8 +11,29 @@ if ! aws s3 ls "s3://$BUCKET/ts"; then
     aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts"
 fi
 
+acquireLock() {
+    while true
+    do
+        exists=$(aws s3 ls "s3://$BUCKET/lock")
+        if [ -z "$exists" ]; then
+            aws s3 cp "$HOME/.s3sync/lock" s3://$BUCKET/lock --quiet
+            echo "$(date -u +%FT%TZ) Acquired lock."
+            return 0
+        else
+            echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
+            sleep 10
+        fi
+    done
+}
+
+releaseLock() {
+    aws s3 rm "s3://$BUCKET/lock" --quiet
+    echo "$(date -u +%FT%TZ) Released lock."
+}
+
 while true
 do
+    acquireLock
     NOW=$(date -u "+%s")
     # get latest timestamp from remote:
     aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote" --quiet
@@ -34,6 +54,7 @@ do
             cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
         fi
     fi
-    sleep 60
+    releaseLock
+    sleep 120
 done
 
