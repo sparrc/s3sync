@@ -16,11 +16,11 @@ while true
 do
     NOW=$(date -u "+%s")
     # get latest timestamp from remote:
-    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote" --no-progress
+    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote" --quiet
     TS_REMOTE=$(cat "$HOME/.s3sync/ts_remote")
     TS_LOCAL=$(cat "$HOME/.s3sync/ts")
     if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
-        echo "Remote stuff is newer, get it."
+        echo "$(date -u +%FT%TZ) Remote bucket contents are newer, downloading contents."
         cp "$HOME/.s3sync/ts_remote" "$HOME/.s3sync/ts"
         aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
@@ -28,7 +28,7 @@ do
         if [[ "$diff" != "" ]]; then
             echo "$diff"
             # we made a change, update timestamps
-            echo "Sync uploaded some changes from local, update timestamps"
+            echo "$(date -u +%FT%TZ) Local directory changes uploaded, updating remote timestamp."
             echo "$NOW" > "$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
             cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
