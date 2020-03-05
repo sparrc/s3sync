@@ -14,8 +14,7 @@ fi
 acquireLock() {
     while true
     do
-        exists=$(aws s3 ls "s3://$BUCKET/lock")
-        if [ -z "$exists" ]; then
+        if ! aws s3api head-object --bucket "$BUCKET" --key lock 2&> /dev/null; then
             aws s3 cp "$HOME/.s3sync/lock" "s3://$BUCKET/lock" --quiet
             echo "$(date -u +%FT%TZ) Acquired lock."
             return 0
