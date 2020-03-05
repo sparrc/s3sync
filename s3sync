@@ -16,7 +16,7 @@ acquireLock() {
     do
         if ! aws s3api head-object --bucket "$BUCKET" --key lock 2&> /dev/null; then
             aws s3 cp "$HOME/.s3sync/lock" "s3://$BUCKET/lock" --quiet
-            echo "$(date -u +%FT%TZ) Acquired lock."
+            echo "$(date -u +%FT%TZ) Acquired lock"
             return 0
         else
             echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
@@ -27,7 +27,7 @@ acquireLock() {
 
 releaseLock() {
     aws s3 rm "s3://$BUCKET/lock" --quiet
-    echo "$(date -u +%FT%TZ) Released lock."
+    echo "$(date -u +%FT%TZ) Released lock"
 }
 
 while true
@@ -35,22 +35,20 @@ do
     acquireLock
     NOW=$(date -u "+%s")
     # get latest timestamp from remote:
-    aws s3 cp "s3://$BUCKET/ts" "$HOME/.s3sync/ts_remote" --quiet
-    TS_REMOTE=$(cat "$HOME/.s3sync/ts_remote")
+    TS_REMOTE=$(aws s3 cp "s3://$BUCKET/ts" - --quiet)
     TS_LOCAL=$(cat "$HOME/.s3sync/ts")
     if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
-        echo "$(date -u +%FT%TZ) Remote bucket contents are newer, downloading contents."
-        cp "$HOME/.s3sync/ts_remote" "$HOME/.s3sync/ts"
+        echo "$(date -u +%FT%TZ) Syncing local directory from remote to local"
+        printf "$TS_REMOTE" > "$HOME/.s3sync/ts"
         aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
         diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class INTELLIGENT_TIERING --no-progress)
         if [[ "$diff" != "" ]]; then
             echo "$diff"
             # we made a change, update timestamps
-            echo "$(date -u +%FT%TZ) Local directory changes uploaded, updating remote timestamp."
+            echo "$(date -u +%FT%TZ) Local directory synced to remote"
             printf "$NOW" > "$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
-            cp "$HOME/.s3sync/ts" "$HOME/.s3sync/ts_remote"
         fi
     fi
     releaseLock
