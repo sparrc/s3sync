@@ -1,6 +1,6 @@
 # s3sync
 
-1. install aws cli
+1. install aws cli and jq: `brew install awscli jq`
 1. clone this repo to $HOME/.s3sync: `git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync`
 1. setup AWS access env vars (AWS_DEFAULT_REGION, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID), this user must have s3 read/write access
 1. create s3 bucket if you havent already: `aws s3 mb s3://mybucket`

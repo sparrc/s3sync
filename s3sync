@@ -14,13 +14,13 @@ fi
 acquireLock() {
     while true
     do
-        if ! aws s3api head-object --bucket "$BUCKET" --key lock 2&> /dev/null; then
+        aws s3api wait object-not-exists --bucket "$BUCKET" --key lock &>/dev/null
+        if [ $? -eq 255 ]; then
+            echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
+        else
             aws s3 cp "$HOME/.s3sync/lock" "s3://$BUCKET/lock" --quiet
             echo "$(date -u +%FT%TZ) Acquired lock"
             return 0
-        else
-            echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
-            sleep 10
         fi
     done
 }
@@ -42,7 +42,7 @@ do
         printf "$TS_REMOTE" > "$HOME/.s3sync/ts"
         aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
-        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class INTELLIGENT_TIERING --no-progress)
+        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class ONEZONE_IA --no-progress)
         if [[ "$diff" != "" ]]; then
             echo "$diff"
             # we made a change, update timestamps
