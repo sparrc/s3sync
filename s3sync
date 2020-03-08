@@ -26,8 +26,16 @@ acquireLock() {
 }
 
 releaseLock() {
-    aws s3 rm "s3://$BUCKET/lock" --quiet
-    echo "$(date -u +%FT%TZ) Released lock"
+    while true
+    do
+        aws s3 rm "s3://$BUCKET/lock" --quiet
+        if [ $? -eq 0 ]; then
+            echo "$(date -u +%FT%TZ) Released lock"
+            return 0
+        fi
+        echo "$(date -u +%FT%TZ) Error trying to release lock, trying again in 10s"
+        sleep 10
+    done
 }
 
 while true
