@@ -28,8 +28,7 @@ acquireLock() {
 releaseLock() {
     while true
     do
-        aws s3 rm "s3://$BUCKET/lock" --quiet
-        if [ $? -eq 0 ]; then
+        if aws s3 rm "s3://$BUCKET/lock" --quiet; then
             echo "$(date -u +%FT%TZ) Released lock"
             return 0
         fi
@@ -40,7 +39,7 @@ releaseLock() {
 
 rotateLog() {
     echo "$(date -u +%FT%TZ) Rotating logfile"
-    xz < ./sync.log > ./sync.log.$(date -u "+%F").xz
+    xz < ./sync.log > "./sync.log.$(date -u +%F).xz"
     truncate ./sync.log -s 0
     echo "$(date -u +%FT%TZ) Logfile rotated"
 }
@@ -54,7 +53,7 @@ do
     TS_LOCAL=$(cat "$HOME/.s3sync/ts")
     if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
         echo "$(date -u +%FT%TZ) Syncing local directory from remote to local"
-        printf "$TS_REMOTE" > "$HOME/.s3sync/ts"
+        echo -n "$TS_REMOTE" > "$HOME/.s3sync/ts"
         aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
         diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class ONEZONE_IA --no-progress)
@@ -62,7 +61,7 @@ do
             echo "$diff"
             # we made a change, update timestamps
             echo "$(date -u +%FT%TZ) Local directory synced to remote"
-            printf "$NOW" > "$HOME/.s3sync/ts"
+            echo -n "$NOW" > "$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
         fi
     fi
