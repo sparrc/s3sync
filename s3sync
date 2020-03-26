@@ -38,6 +38,13 @@ releaseLock() {
     done
 }
 
+rotateLog() {
+    echo "$(date -u +%FT%TZ) Rotating logfile"
+    xz < ./sync.log > ./sync.log.$(date -u "+%F").xz
+    truncate ./sync.log -s 0
+    echo "$(date -u +%FT%TZ) Logfile rotated"
+}
+
 while true
 do
     acquireLock
@@ -60,6 +67,9 @@ do
         fi
     fi
     releaseLock
+    if [[ "$(wc -c < ./sync.log)" -gt 1000000 ]]; then
+        rotateLog
+    fi
     sleep 120
 done
 

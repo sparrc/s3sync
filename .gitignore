@@ -1,4 +1,5 @@
 config.json
 sync.log
+sync.log.*
 ts
 ts_remote

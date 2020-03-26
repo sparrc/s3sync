@@ -8,15 +8,9 @@
         <string>/Users/$USER</string>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:</string>
-        <key>AWS_DEFAULT_REGION</key>
-        <string>$AWS_DEFAULT_REGION</string>
-        <key>AWS_ACCESS_KEY_ID</key>
-        <string>$AWS_ACCESS_KEY_ID</string>
-        <key>AWS_SECRET_ACCESS_KEY</key>
-        <string>$AWS_SECRET_ACCESS_KEY</string>
     </dict>
     <key>Label</key>
-        <string>com.s3sync</string>
+        <string>s3sync</string>
     <key>WorkingDirectory</key>
         <string>/Users/$USER/.s3sync</string>
     <key>ProgramArguments</key>
