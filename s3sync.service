@@ -1,0 +1,12 @@
+[Unit]
+Description=s3sync
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$HOME/.s3sync
+ExecStart=/usr/bin/bash ./s3sync
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

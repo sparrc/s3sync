@@ -3,6 +3,10 @@
 SYNC_DIR=$(jq -r .syncdir < "$HOME/.s3sync/config.json")
 BUCKET=$(jq -r .bucket < "$HOME/.s3sync/config.json")
 
+if [ ! -f "$SYNC_DIR" ]; then
+    mkdir -p $SYNC_DIR
+fi
+
 if [ ! -f "$HOME/.s3sync/ts" ]; then
     echo 0 > "$HOME/.s3sync/ts"
 fi
@@ -66,8 +70,11 @@ do
         fi
     fi
     releaseLock
-    if [[ "$(wc -c < ./sync.log)" -gt 1000000 ]]; then
-        rotateLog
+    # rotate the log if it exists:
+    if [ -f ./sync.log ]; then
+        if [[ "$(wc -c < ./sync.log)" -gt 1000000 ]]; then
+            rotateLog
+        fi
     fi
     sleep 120
 done

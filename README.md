@@ -1,18 +1,39 @@
 # s3sync
 
-1. install aws cli, jq, and xz: `brew install awscli jq xz`
-1. clone this repo to $HOME/.s3sync: `git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync`
-1. setup AWS access using 'aws configure', this user must have s3 read/write access
-1. create s3 bucket if you havent already: `aws s3 mb s3://mybucket`
-1. create the local directory that you want to sync: `mkdir -p $HOME/s3`
-1. write dir and bucket to config file: `echo "{\"syncdir\":\"$HOME/s3\", \"bucket\":\"mybucket\"}" > $HOME/.s3sync/config.json`
-1. run s3sync (`$HOME/.s3sync/s3sync`) or setup a daemon (see below)
+1. install awscli, jq, and xz
+2. setup AWS access using `aws configure`, this user must have s3 read/write access
+3. clone and setup s3sync on machine: 
+```bash
+# clone this repo to ~/.s3sync
+git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync
+# write config file. syncdir is the local synced directory. bucket is the s3 bucket.
+cat << EOF > $HOME/.s3sync/config.json
+{
+    "syncdir": "$HOME/s3",
+    "bucket": "mybucket"
+}
+EOF
+```
+4. create s3 bucket if you havent already: `aws s3 mb s3://mybucket`
+5. setup a daemon (see below)
 
-### Setup launchd daemon:
+### Setup systemd daemon (linux):
 
-1. `eval "echo \"$(cat s3sync.plist)\"" | sudo tee /Library/LaunchAgents/s3sync.plist`
-1. `sudo chmod 755 /Library/LaunchAgents/s3sync.plist`
-1. `sudo chown root:wheel /Library/LaunchAgents/s3sync.plist`
-1. `sudo launchctl load -w /Library/LaunchAgents/s3sync.plist`
-1. check status with `sudo launchctl list | grep s3sync`
+```bash
+cd $HOME/.s3sync
+eval "echo \"$(cat s3sync.service)\"" | sudo tee /etc/systemd/system/s3sync.service
+sudo systemctl daemon-reload
+sudo systemctl enable s3sync
+sudo systemctl start s3sync
+```
+
+### Setup launchd daemon (macOS):
+
+```bash
+cd $HOME/.s3sync
+eval "echo \"$(cat s3sync.plist)\"" | sudo tee /Library/LaunchAgents/s3sync.plist
+sudo chmod 755 /Library/LaunchAgents/s3sync.plist
+sudo chown root:wheel /Library/LaunchAgents/s3sync.plist
+sudo launchctl load -w /Library/LaunchAgents/s3sync.plist
+```
 
