@@ -1,0 +1,20 @@
+{
+  "Rules": [
+    {
+      "Expiration": {
+        "Days": 180
+      },
+      "Prefix": "archives/",
+      "ID": "Rule for deleting old archives",
+      "Status": "Enabled"
+    },
+    {
+      "Expiration": {
+        "Days": 1
+      },
+      "Prefix": "lock",
+      "ID": "Rule for deleting the lock file",
+      "Status": "Enabled"
+    }
+  ]
+}

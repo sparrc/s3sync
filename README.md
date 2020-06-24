@@ -10,7 +10,8 @@ git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync
 cat << EOF > $HOME/.s3sync/config.json
 {
     "syncdir": "$HOME/s3",
-    "bucket": "mybucket"
+    "bucket": "mybucket",
+    "archive_interval_days": 30
 }
 EOF
 ```
