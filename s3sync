@@ -42,6 +42,16 @@ makeArchive() {
     fi
 }
 
+checkCredentials() {
+    while true; do
+        if aws s3 ls "s3://$BUCKET/" &>/dev/null; then
+            return 0
+        fi
+        echo "$(date -u +%FT%TZ) Unable to access bucket, waiting for credentials..."
+        sleep 60
+    done
+}
+
 acquireLock() {
     while true; do
         aws s3api wait object-not-exists --bucket "$BUCKET" --key lock &>/dev/null
@@ -74,6 +84,7 @@ rotateLog() {
 }
 
 while true; do
+    checkCredentials
     acquireLock
     NOW=$(date -u "+%s")
     # get latest timestamp from remote:
@@ -101,5 +112,5 @@ while true; do
             rotateLog
         fi
     fi
-    sleep 120
+    sleep 150
 done
