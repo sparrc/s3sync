@@ -6,7 +6,10 @@ if [ ! -f "$HOME/.s3sync/config" ]; then
     exit 1
 fi
 
+set -a
 source "$HOME/.s3sync/config"
+echo "$(date -u +%FT%TZ) Using AWS profile $AWS_PROFILE"
+set +a
 
 if [ ! -d "$SYNC_DIR" ]; then
     if ! mkdir -p "$SYNC_DIR"; then
