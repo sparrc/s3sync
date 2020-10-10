@@ -1,18 +1,17 @@
 # s3sync
 
-1. install awscli, jq, and xz
+1. install awscli and xz
 2. setup AWS access using `aws configure`, this user must have s3 read/write access
 3. clone and setup s3sync on machine: 
 ```bash
 # clone this repo to ~/.s3sync
 git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync
 # write config file. syncdir is the local synced directory. bucket is the s3 bucket.
-cat << EOF > $HOME/.s3sync/config.json
-{
-    "syncdir": "$HOME/s3",
-    "bucket": "mybucket",
-    "archive_interval_days": 30
-}
+cat << EOF > $HOME/.s3sync/config
+BUCKET="myBucket"
+AWS_PROFILE="default"
+ARCHIVE_INTERVAL="30"
+SYNC_DIR="/Users/sparrc/s3"
 EOF
 ```
 4. create s3 bucket if you havent already: `aws s3 mb s3://mybucket`

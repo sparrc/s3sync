@@ -1,15 +1,17 @@
 #!/bin/bash
 
-SYNC_DIR=$(jq -r .syncdir <"$HOME/.s3sync/config.json")
-BUCKET=$(jq -r .bucket <"$HOME/.s3sync/config.json")
-ARCHIVE_INTERVAL=$(jq -r .archive_interval_days <"$HOME/.s3sync/config.json")
-
-if [ ! -d "$SYNC_DIR" ]; then
-    mkdir -p "$SYNC_DIR"
+if [ ! -f "$HOME/.s3sync/config" ]; then
+    echo "Config file $HOME/.s3sync/config not found, exiting"
+    sleep 30
+    exit 1
 fi
 
-if [[ "$ARCHIVE_INTERVAL" -eq "" ]]; then
-    ARCHIVE_INTERVAL="30"
+source "$HOME/.s3sync/config"
+
+if [ ! -d "$SYNC_DIR" ]; then
+    if ! mkdir -p "$SYNC_DIR"; then
+        exit 1
+    fi
 fi
 
 if [ ! -f "$HOME/.s3sync/ts" ]; then
@@ -34,7 +36,7 @@ makeArchive() {
     DAYS_SINCE_ARCHIVE=$((DAYS_SINCE_EPOCH - LAST_ARCHIVE_DAY))
     if [[ "$DAYS_SINCE_ARCHIVE" -gt "$ARCHIVE_INTERVAL" ]]; then
         now=$(date -u +%FT%TZ)
-        echo "$now It has been $DAYS_SINCE_ARCHIVE since the last archive, creating now: s3://$BUCKET/archives/$now/"
+        echo "$now It has been $DAYS_SINCE_ARCHIVE days since the last archive, creating now: s3://$BUCKET/archives/$now/"
         if aws s3 cp "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --recursive --no-progress; then
             echo -n "$DAYS_SINCE_EPOCH" >/tmp/archive_ts
             aws s3 cp /tmp/archive_ts "s3://$BUCKET/archive_ts"
