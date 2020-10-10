@@ -21,16 +21,20 @@ if ! aws s3 ls "s3://$BUCKET/ts"; then
 fi
 
 makeArchive() {
-    DAYS_SINCE_EPOCH=$(($(date +%s) / 86400))
+    DAYS_SINCE_EPOCH=$(($(date -u +%s) / 86400))
     LAST_ARCHIVE_DAY=$(aws s3 cp "s3://$BUCKET/archive_ts" - --quiet)
+    if [ ! $? -eq 0 ]; then
+        return
+    fi
     if [[ "$LAST_ARCHIVE_DAY" -eq "" ]]; then
+        echo "$(date -u +%FT%TZ) Appears we have not made any archives, putting a lifecycle config into s3 bucket"
         aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration "file://$HOME/.s3sync/lifecycle.json"
         LAST_ARCHIVE_DAY="0"
     fi
     DAYS_SINCE_ARCHIVE=$((DAYS_SINCE_EPOCH - LAST_ARCHIVE_DAY))
     if [[ "$DAYS_SINCE_ARCHIVE" -gt "$ARCHIVE_INTERVAL" ]]; then
         now=$(date -u +%FT%TZ)
-        echo "$now Creating archive: s3://$BUCKET/archives/$now/"
+        echo "$now It has been $DAYS_SINCE_ARCHIVE since the last archive, creating now: s3://$BUCKET/archives/$now/"
         if aws s3 cp "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --recursive --no-progress; then
             echo -n "$DAYS_SINCE_EPOCH" >/tmp/archive_ts
             aws s3 cp /tmp/archive_ts "s3://$BUCKET/archive_ts"
