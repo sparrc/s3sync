@@ -1,8 +1,8 @@
 #!/bin/bash
 
-SYNC_DIR=$(jq -r .syncdir < "$HOME/.s3sync/config.json")
-BUCKET=$(jq -r .bucket < "$HOME/.s3sync/config.json")
-ARCHIVE_INTERVAL=$(jq -r .archive_interval_days < "$HOME/.s3sync/config.json")
+SYNC_DIR=$(jq -r .syncdir <"$HOME/.s3sync/config.json")
+BUCKET=$(jq -r .bucket <"$HOME/.s3sync/config.json")
+ARCHIVE_INTERVAL=$(jq -r .archive_interval_days <"$HOME/.s3sync/config.json")
 
 if [ ! -d "$SYNC_DIR" ]; then
     mkdir -p "$SYNC_DIR"
@@ -13,7 +13,7 @@ if [[ "$ARCHIVE_INTERVAL" -eq "" ]]; then
 fi
 
 if [ ! -f "$HOME/.s3sync/ts" ]; then
-    echo -n 0 > "$HOME/.s3sync/ts"
+    echo -n 0 >"$HOME/.s3sync/ts"
 fi
 
 if ! aws s3 ls "s3://$BUCKET/ts"; then
@@ -32,15 +32,14 @@ makeArchive() {
         now=$(date -u +%FT%TZ)
         echo "$now Creating archive: s3://$BUCKET/archives/$now/"
         if aws s3 cp "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --recursive --no-progress; then
-            echo -n "$DAYS_SINCE_EPOCH" > /tmp/archive_ts
+            echo -n "$DAYS_SINCE_EPOCH" >/tmp/archive_ts
             aws s3 cp /tmp/archive_ts "s3://$BUCKET/archive_ts"
         fi
     fi
 }
 
 acquireLock() {
-    while true
-    do
+    while true; do
         aws s3api wait object-not-exists --bucket "$BUCKET" --key lock &>/dev/null
         if [ $? -eq 255 ]; then
             echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
@@ -53,8 +52,7 @@ acquireLock() {
 }
 
 releaseLock() {
-    while true
-    do
+    while true; do
         if aws s3 rm "s3://$BUCKET/lock" --quiet; then
             echo "$(date -u +%FT%TZ) Released lock"
             return 0
@@ -66,13 +64,12 @@ releaseLock() {
 
 rotateLog() {
     echo "$(date -u +%FT%TZ) Rotating logfile"
-    xz < ./sync.log > "./sync.log.$(date -u +%F).xz"
+    xz <./sync.log >"./sync.log.$(date -u +%F).xz"
     truncate ./sync.log -s 0
     echo "$(date -u +%FT%TZ) Logfile rotated"
 }
 
-while true
-do
+while true; do
     acquireLock
     NOW=$(date -u "+%s")
     # get latest timestamp from remote:
@@ -80,7 +77,7 @@ do
     TS_LOCAL=$(cat "$HOME/.s3sync/ts")
     if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
         echo "$(date -u +%FT%TZ) Syncing local directory from remote to local"
-        echo -n "$TS_REMOTE" > "$HOME/.s3sync/ts"
+        echo -n "$TS_REMOTE" >"$HOME/.s3sync/ts"
         aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
         diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class ONEZONE_IA --no-progress)
@@ -88,7 +85,7 @@ do
             echo "$diff"
             # we made a change, update timestamps
             echo "$(date -u +%FT%TZ) Local directory synced to remote"
-            echo -n "$NOW" > "$HOME/.s3sync/ts"
+            echo -n "$NOW" >"$HOME/.s3sync/ts"
             aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
         fi
     fi
@@ -96,10 +93,9 @@ do
     releaseLock
     # rotate the log if it exists:
     if [ -f ./sync.log ]; then
-        if [[ "$(wc -c < ./sync.log)" -gt 5000000 ]]; then
+        if [[ "$(wc -c <./sync.log)" -gt 5000000 ]]; then
             rotateLog
         fi
     fi
     sleep 120
 done
-
