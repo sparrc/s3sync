@@ -83,7 +83,15 @@ releaseLock() {
 
 rotateLog() {
     echo "$(date -u +%FT%TZ) Rotating logfile"
-    xz <./sync.log >"./sync.log.$(date -u +%F).xz"
+    if which xz &>/dev/null; then
+        xz <./sync.log >"./sync.log.$(date -u +%F).xz"
+    elif which gzip &>/dev/null; then
+        gzip -9 <./sync.log >"./sync.log.$(date -u +%F).gz"
+    elif which zip &>/dev/null; then
+        zip -9 --quiet <./sync.log >"./sync.log.$(date -u +%F).zip"
+    else
+        cp ./sync.log "./sync.log.$(date -u +%F)"
+    fi
     truncate ./sync.log -s 0
     echo "$(date -u +%FT%TZ) Logfile rotated"
 }

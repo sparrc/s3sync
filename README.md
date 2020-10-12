@@ -1,6 +1,6 @@
 # s3sync
 
-1. install awscli and xz
+1. install awscli (optional: install xz)
 2. setup AWS access using `aws configure`, this user must have s3 read/write access
 3. clone and setup s3sync on machine: 
 ```bash
