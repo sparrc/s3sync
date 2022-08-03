@@ -6,12 +6,14 @@
 ```bash
 # clone this repo to ~/.s3sync
 git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync
-# write config file. syncdir is the local synced directory. bucket is the s3 bucket.
+# write config file. SYNC_DIRS are the local synced directories. bucket is the s3 bucket.
 cat << EOF > $HOME/.s3sync/config
 BUCKET="myBucket"
 AWS_PROFILE="default"
 ARCHIVE_INTERVAL="30"
-SYNC_DIR="/Users/sparrc/s3"
+SYNC_DIRS=(
+    "/Users/sparrc/s3"
+)
 EOF
 ```
 4. create s3 bucket if you havent already: `aws s3 mb s3://mybucket`
