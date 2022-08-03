@@ -2,7 +2,7 @@
   "Rules": [
     {
       "Expiration": {
-        "Days": 95
+        "Days": 180
       },
       "Prefix": "archives/",
       "ID": "Rule for deleting old archives",

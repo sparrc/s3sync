@@ -1,176 +1,129 @@
 #!/bin/bash
 
-log() {
-    local msg="$1"
-    echo "$(date -u +%FT%TZ) $msg"
-}
-
-LOCALDIR="$(dirname $0)"
-log "Operating out of directory $LOCALDIR"
-
-if [ ! -f "$LOCALDIR/config" ]; then
-    log "Config file $LOCALDIR/config not found, exiting"
+if [ ! -f "$HOME/.s3sync/config" ]; then
+    echo "Config file $HOME/.s3sync/config not found, exiting"
     sleep 30
     exit 1
 fi
 
 set -a
-source "$LOCALDIR/config"
-log "Using AWS profile $AWS_PROFILE"
+source "$HOME/.s3sync/config"
+echo "$(date -u +%FT%TZ) Using AWS profile $AWS_PROFILE"
 set +a
 
-setup() {
-    if [ ! -d "$SYNC_DIR" ]; then
-        if ! mkdir -p "$SYNC_DIR"; then
-            exit 1
-        fi
+if [ ! -d "$SYNC_DIR" ]; then
+    if ! mkdir -p "$SYNC_DIR"; then
+        exit 1
     fi
+fi
 
-    if [ ! -d "$LOCALDIR/$S3DIR" ]; then
-        if ! mkdir -p "$LOCALDIR/$S3DIR"; then
-            exit 2
-        fi
-    fi
+if [ ! -f "$HOME/.s3sync/ts" ]; then
+    echo -n 0 >"$HOME/.s3sync/ts"
+fi
 
-    if [ ! -f "$LOCALDIR/$S3DIR/ts" ]; then
-        echo -n 0 >"$LOCALDIR/$S3DIR/ts"
-    fi
+if ! aws s3 ls "s3://$BUCKET/ts"; then
+    aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts"
+fi
 
-    if ! aws s3api head-bucket --bucket "$BUCKET" &>/dev/null; then
-        log "Bucket $BUCKET does not exist, creating it"
-        aws s3 mb "s3://$BUCKET"
-    fi
-
-    if ! aws s3 ls "s3://$S3DIR/ts" &>/dev/null; then
-        aws s3 cp "$LOCALDIR/S3DIR/ts" "s3://$S3DIR/ts"
-    fi
-}
-
-make-archive() {
-    local days_since_epoch=$(($(date -u +%s) / 86400))
-    local last_archive_day=$(aws s3 cp "s3://$S3DIR/archive_ts" - --quiet)
+makeArchive() {
+    DAYS_SINCE_EPOCH=$(($(date -u +%s) / 86400))
+    LAST_ARCHIVE_DAY=$(aws s3 cp "s3://$BUCKET/archive_ts" - --quiet)
     if [ ! $? -eq 0 ]; then
         return
     fi
-    if [[ "$last_archive_day" -eq "" ]]; then
-        log "Appears we have not made any archives, putting a lifecycle config into s3 bucket"
-        aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration "file://$LOCALDIR/lifecycle.json"
-        last_archive_day="0"
+    if [[ "$LAST_ARCHIVE_DAY" -eq "" ]]; then
+        echo "$(date -u +%FT%TZ) Appears we have not made any archives, putting a lifecycle config into s3 bucket"
+        aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration "file://$HOME/.s3sync/lifecycle.json"
+        LAST_ARCHIVE_DAY="0"
     fi
-    local days_since_archive=$((days_since_epoch - last_archive_day))
-    if [[ "$days_since_archive" -gt "$ARCHIVE_INTERVAL" ]]; then
+    DAYS_SINCE_ARCHIVE=$((DAYS_SINCE_EPOCH - LAST_ARCHIVE_DAY))
+    if [[ "$DAYS_SINCE_ARCHIVE" -gt "$ARCHIVE_INTERVAL" ]]; then
         now=$(date -u +%FT%TZ)
-        echo "$now It has been $days_since_archive days since the last archive, creating now: s3://$ARCHIVEDIR/$now/"
-        if aws s3 cp "s3://$S3DIR/sync/" "s3://$ARCHIVEDIR/$now/" --storage-class ONEZONE_IA --recursive --no-progress; then
-            echo -n "$days_since_epoch" >/tmp/archive_ts
-            aws s3 cp /tmp/archive_ts "s3://$S3DIR/archive_ts"
+        echo "$now It has been $DAYS_SINCE_ARCHIVE days since the last archive, creating now: s3://$BUCKET/archives/$now/"
+        if aws s3 cp "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --recursive --no-progress; then
+            echo -n "$DAYS_SINCE_EPOCH" >/tmp/archive_ts
+            aws s3 cp /tmp/archive_ts "s3://$BUCKET/archive_ts"
         fi
     fi
 }
 
-check-credentials() {
+checkCredentials() {
     while true; do
-        if aws s3 ls "s3://$S3DIR/" &>/dev/null; then
+        if aws s3 ls "s3://$BUCKET/" &>/dev/null; then
             return 0
         fi
-        log "Unable to access bucket, waiting for credentials..."
+        echo "$(date -u +%FT%TZ) Unable to access bucket, waiting for credentials..."
         sleep 60
     done
 }
 
-acquire-lock() {
+acquireLock() {
     while true; do
         aws s3api wait object-not-exists --bucket "$BUCKET" --key lock &>/dev/null
         if [ $? -eq 255 ]; then
-            log "Someone else has the lock, waiting..."
+            echo "$(date -u +%FT%TZ) Someone else has the lock, waiting..."
         else
-            aws s3 cp "$LOCALDIR/lock" "s3://$LOCKDIR/lock" --quiet
-            log "Acquired lock: $LOCKDIR"
+            aws s3 cp "$HOME/.s3sync/lock" "s3://$BUCKET/lock" --quiet
+            echo "$(date -u +%FT%TZ) Acquired lock"
             return 0
         fi
     done
 }
 
-release-lock() {
+releaseLock() {
     while true; do
-        if aws s3 rm "s3://$LOCKDIR/lock" --quiet; then
-            log "Released lock: $LOCKDIR"
+        if aws s3 rm "s3://$BUCKET/lock" --quiet; then
+            echo "$(date -u +%FT%TZ) Released lock"
             return 0
         fi
-        log "Error trying to release lock, trying again in 10s"
+        echo "$(date -u +%FT%TZ) Error trying to release lock, trying again in 10s"
         sleep 10
     done
 }
 
-rotate-log() {
-    log "Rotating logfile"
+rotateLog() {
+    echo "$(date -u +%FT%TZ) Rotating logfile"
     if which xz &>/dev/null; then
-        log "Using xz compression to rotate"
         xz <./sync.log >"./sync.log.$(date -u +%F).xz"
     elif which gzip &>/dev/null; then
-        log "Using gzip compression to rotate"
         gzip -9 <./sync.log >"./sync.log.$(date -u +%F).gz"
     elif which zip &>/dev/null; then
-        log "Using zip compression to rotate"
         zip -9 --quiet <./sync.log >"./sync.log.$(date -u +%F).zip"
     else
-        log "No compression program found, rotating without compression"
         cp ./sync.log "./sync.log.$(date -u +%F)"
     fi
     truncate ./sync.log -s 0
-    log "Logfile rotated"
+    echo "$(date -u +%FT%TZ) Logfile rotated"
 }
 
-main() {
-    check-credentials
-    acquire-lock
-    local now=$(date -u "+%s")
+while true; do
+    checkCredentials
+    acquireLock
+    NOW=$(date -u "+%s")
     # get latest timestamp from remote:
-    local ts_remote=$(aws s3 cp "s3://$S3DIR/ts" - --quiet)
-    local ts_local=$(cat "$LOCALDIR/ts")
-    if [ "$ts_remote" -gt "$ts_local" ]; then
-        log "Syncing local directory from remote to local"
-        echo -n "$ts_remote" >"$LOCALDIR/ts"
-        aws s3 sync "s3://$S3DIR/sync" "$SYNC_DIR" --delete --no-progress
+    TS_REMOTE=$(aws s3 cp "s3://$BUCKET/ts" - --quiet)
+    TS_LOCAL=$(cat "$HOME/.s3sync/ts")
+    if [ "$TS_REMOTE" -gt "$TS_LOCAL" ]; then
+        echo "$(date -u +%FT%TZ) Syncing local directory from remote to local"
+        echo -n "$TS_REMOTE" >"$HOME/.s3sync/ts"
+        aws s3 sync "s3://$BUCKET/sync" "$SYNC_DIR" --delete --no-progress
     else
-        diff=$(aws s3 sync "$SYNC_DIR" "s3://$S3DIR/sync" --delete --storage-class ONEZONE_IA --no-progress)
+        diff=$(aws s3 sync "$SYNC_DIR" "s3://$BUCKET/sync" --delete --storage-class ONEZONE_IA --no-progress)
         if [[ "$diff" != "" ]]; then
             echo "$diff"
             # we made a change, update timestamps
-            log "Local directory synced to remote"
-            echo -n "$now" >"$LOCALDIR/ts"
-            aws s3 cp "$LOCALDIR/ts" "s3://$S3DIR/ts" --no-progress
+            echo "$(date -u +%FT%TZ) Local directory synced to remote"
+            echo -n "$NOW" >"$HOME/.s3sync/ts"
+            aws s3 cp "$HOME/.s3sync/ts" "s3://$BUCKET/ts" --no-progress
         fi
     fi
-    make-archive
-    release-lock
+    makeArchive
+    releaseLock
     # rotate the log if it exists:
     if [ -f ./sync.log ]; then
         if [[ "$(wc -c <./sync.log)" -gt 5000000 ]]; then
-            rotate-log
+            rotateLog
         fi
     fi
-}
-
-env-vars() {
-    local d="$1"
-    export SYNC_DIR="$d"
-    sync_dir_name="$(tr A-Z a-z <<<$(basename "$SYNC_DIR"))"
-    export S3DIR="$BUCKET/$sync_dir_name"
-    export ARCHIVEDIR="$BUCKET/archives/$sync_dir_name"
-    export LOCKDIR="$BUCKET/locks/$sync_dir_name"
-}
-
-for d in "${SYNC_DIRS[@]}"; do
-    env-vars "$d"
-    setup
-done
-
-while true; do
-    for d in "${SYNC_DIRS[@]}"; do
-        env-vars "$d"
-        log "Syncing $SYNC_DIR with s3://$S3DIR"
-        main
-    done
-    sleep 120
+    sleep 150
 done
