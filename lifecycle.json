@@ -15,6 +15,14 @@
       "Prefix": "lock",
       "ID": "Rule for deleting the lock file",
       "Status": "Enabled"
+    },
+    {
+      "Expiration": {
+        "Days": 15
+      },
+      "Prefix": "archive_in_progress",
+      "ID": "Rule for deleting a stale 'archive_in_progress' file",
+      "Status": "Enabled"
     }
   ]
 }

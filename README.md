@@ -10,7 +10,7 @@ git clone https://github.com/sparrc/s3sync.git $HOME/.s3sync
 cat << EOF > $HOME/.s3sync/config
 BUCKET="myBucket"
 AWS_PROFILE="default"
-ARCHIVE_INTERVAL="30"
+ARCHIVE_INTERVAL="120"
 SYNC_DIR="/Users/sparrc/s3"
 EOF
 ```

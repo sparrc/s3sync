@@ -38,11 +38,17 @@ makeArchive() {
     fi
     DAYS_SINCE_ARCHIVE=$((DAYS_SINCE_EPOCH - LAST_ARCHIVE_DAY))
     if [[ "$DAYS_SINCE_ARCHIVE" -gt "$ARCHIVE_INTERVAL" ]]; then
-        now=$(date -u +%FT%TZ)
+        now=$(aws s3 cp "s3://$BUCKET/archive_in_progress" - --quiet)
+        if [[ "$now" -eq "" ]]; then
+            now=$(date -u +%FT%TZ)
+        fi
         echo "$now It has been $DAYS_SINCE_ARCHIVE days since the last archive, creating now: s3://$BUCKET/archives/$now/"
-        if aws s3 cp "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --recursive --no-progress; then
+        printf "$now" >/tmp/archivenow
+        aws s3 cp /tmp/archivenow s3://$BUCKET/archive_in_progress
+        if aws s3 sync "s3://$BUCKET/sync/" "s3://$BUCKET/archives/$now/" --storage-class DEEP_ARCHIVE --no-progress; then
             echo -n "$DAYS_SINCE_EPOCH" >/tmp/archive_ts
             aws s3 cp /tmp/archive_ts "s3://$BUCKET/archive_ts"
+            aws s3 rm s3://$BUCKET/archive_in_progress
         fi
     fi
 }
